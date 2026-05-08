@@ -2,9 +2,94 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>山东府县八景十景电子地图</title>
     <style>
+        /* 移动端菜单按钮 */
+.menu-toggle {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1001;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* ========== 手机端适配 ========== */
+@media screen and (max-width: 768px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    body {
+        flex-direction: column;
+        position: relative;
+    }
+
+    /* 侧边栏默认隐藏，浮在地图上方 */
+    .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 260px;
+        height: 100%;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+        z-index: 1000;
+        transition: transform 0.3s;
+    }
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    .main-area {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .map-wrap {
+        flex: 1;
+        width: 100%;
+        padding: 10px;
+        min-height: 0;
+    }
+
+    /* 古籍面板从底部弹出 */
+    .guwen-panel {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 50%;
+        border-left: none;
+        border-top: 1px solid #ddd;
+        z-index: 1000;
+        transition: max-height 0.3s;
+    }
+    .guwen-panel.collapsed {
+        max-height: 0;
+        overflow: hidden;
+    }
+    .guwen-panel:not(.collapsed) {
+        max-height: 50%;
+    }
+
+    .popup {
+        max-width: 240px;
+    }
+    .popup-title {
+        font-size: 13px;
+    }
+    .popup-content {
+        font-size: 12px;
+    }
+}
         * {
             margin: 0;
             padding: 0;
@@ -165,6 +250,7 @@
 </head>
 
 <body>
+    <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">☰ 目录</button>
     <div class="sidebar" id="sidebar"></div>
     <div class="main-area">
         <div class="map-wrap">
@@ -187,13 +273,36 @@
 
     <script>
         const map = L.map('map', { zoomControl: false }).setView([36.0, 118.0], 7);
+        // 窗口大小变化时，地图自动刷新
+window.addEventListener('resize', function () {
+    map.invalidateSize();
+});
         L.control.zoom({ position: 'topright' }).addTo(map);
 
         L.tileLayer('https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', {
             subdomains: ['1', '2', '3', '4'],
             attribution: '© 高德地图 | 山东府县八景十景'
         }).addTo(map);
+        // 手机端切换侧边栏
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('open');
+    setTimeout(function() {
+        map.invalidateSize();
+    }, 350);
+}
 
+// 点击县名后在手机上自动收起侧边栏
+function closeSidebarOnMobile() {
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.remove('open');
+        setTimeout(function() {
+            map.invalidateSize();
+        }, 350);
+    }
+}
+        
         const colorMap = {
             "济南府": "#e53e3e",
             "东昌府": "#3182ce",
@@ -208,14 +317,17 @@
         };
 
         // 显示/隐藏古籍面板
-        function togglePanel(show) {
-            const panel = document.getElementById('guwenPanel');
-            if (show) {
-                panel.classList.remove('collapsed');
-            } else {
-                panel.classList.add('collapsed');
-            }
-        }
+       function togglePanel(show) {
+    const panel = document.getElementById('guwenPanel');
+    if (show) {
+        panel.classList.remove('collapsed');
+    } else {
+        panel.classList.add('collapsed');
+    }
+    setTimeout(function() {
+        map.invalidateSize();
+    }, 350);
+}
 
         // 点击县名或地图标记时显示古籍
         function showGuwen(countyName, fuName, guwenText) {
@@ -2007,6 +2119,7 @@
                 div.className = 'item';
                 div.textContent = p.name;
                 div.onclick = () => {
+                    closeSidebarOnMobile();
                     map.setView([p.lat, p.lng], 12);
                     setTimeout(() => markerMap[p.name + ',' + p.fu].openPopup(), 300);
                     // 同时显示古籍
